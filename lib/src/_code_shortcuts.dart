@@ -102,8 +102,39 @@ class _CodeShortcutActions extends StatelessWidget {
         },
       );
     }
+    final Map<Type, Action<Intent>> platformTextActions = {
+      SelectAllTextIntent: CallbackAction<SelectAllTextIntent>(
+        onInvoke: (intent) {
+          return _onAction(context, const CodeShortcutSelectAllIntent());
+        },
+      ),
+      CopySelectionTextIntent: CallbackAction<CopySelectionTextIntent>(
+        onInvoke: (intent) {
+          if (intent.collapseSelection) {
+            return _onAction(context, const CodeShortcutCutIntent());
+          }
+          return _onAction(context, const CodeShortcutCopyIntent());
+        },
+      ),
+      PasteTextIntent: CallbackAction<PasteTextIntent>(
+        onInvoke: (intent) {
+          return _onAction(context, const CodeShortcutPasteIntent());
+        },
+      ),
+      UndoTextIntent: CallbackAction<UndoTextIntent>(
+        onInvoke: (intent) {
+          return _onAction(context, const CodeShortcutUndoIntent());
+        },
+      ),
+      RedoTextIntent: CallbackAction<RedoTextIntent>(
+        onInvoke: (intent) {
+          return _onAction(context, const CodeShortcutRedoIntent());
+        },
+      ),
+    };
     return Actions(actions: {
       ...actions,
+      ...platformTextActions,
       ...{
         DoNothingAndStopPropagationTextIntent:
             DoNothingAction(consumesKey: false),
@@ -275,10 +306,10 @@ class _CodeShortcutActions extends StatelessWidget {
     final Action<Intent>? action = Actions.maybeFind(context, intent: intent);
     if (action != null &&
         action.isActionEnabled &&
-        action.consumesKey(intent)) {
-      if (action is CallbackAction) {
-        action.invoke(intent);
-      }
+        action.consumesKey(intent) &&
+        action is! _CompoDoNothingCallbackAction &&
+        action is! _EscCallbackAction) {
+      action.invoke(intent);
       return null;
     }
     if (intent is CodeShortcutEditableIntent && readOnly) {
