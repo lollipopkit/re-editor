@@ -372,7 +372,6 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
     }
     final CodeLineSelection? currentMatch = widget.findController.currentMatchSelection;
     if (currentMatch == null) {
-      widget.controller.selection = const CodeLineSelection.zero();
       return;
     }
     widget.controller.selection = currentMatch;

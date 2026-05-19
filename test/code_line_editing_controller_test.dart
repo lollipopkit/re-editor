@@ -357,11 +357,11 @@ void main() {
     });
 
 
-    test('`unforldLineSelection`', () {
+    test('`unfoldLineSelection`', () {
       // Empty
       {
         final CodeLineEditingController controller = CodeLineEditingController.fromText('');
-        expect(controller.unforldLineSelection, controller.selection);
+        expect(controller.unfoldLineSelection, controller.selection);
       }
       // Single code line
       {
@@ -370,7 +370,7 @@ void main() {
           index: 0, 
           offset: 1
         );
-        expect(controller.unforldLineSelection, controller.selection);
+        expect(controller.unfoldLineSelection, controller.selection);
       }
       // Multi code lines
       {
@@ -379,14 +379,14 @@ void main() {
           index: 1, 
           offset: 1
         );
-        expect(controller.unforldLineSelection, controller.selection);
+        expect(controller.unfoldLineSelection, controller.selection);
         controller.selection = const CodeLineSelection(
           baseIndex: 0,
           baseOffset: 0,
           extentIndex: 2,
           extentOffset: 3,
         );
-        expect(controller.unforldLineSelection, controller.selection);
+        expect(controller.unfoldLineSelection, controller.selection);
       }
       // Collapsed code lines
       {
@@ -402,7 +402,7 @@ void main() {
           index: 0, 
           offset: 1
         );
-        expect(controller.unforldLineSelection, controller.selection);
+        expect(controller.unfoldLineSelection, controller.selection);
       }
       // More collapsed code lines
       {
@@ -431,7 +431,7 @@ void main() {
           extentIndex: 2,
           extentOffset: 3,
         );
-        expect(controller.unforldLineSelection, const CodeLineSelection(
+        expect(controller.unfoldLineSelection, const CodeLineSelection(
           baseIndex: 4,
           baseOffset: 0,
           extentIndex: 8,

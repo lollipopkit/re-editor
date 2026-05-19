@@ -143,7 +143,7 @@ abstract class CodeLineEditingController extends ValueNotifier<CodeLineEditingVa
   int get lineCount;
 
   /// Expanded code selections.
-  CodeLineSelection get unforldLineSelection;
+  CodeLineSelection get unfoldLineSelection;
 
   /// Whether the code is empty.
   bool get isEmpty;
@@ -340,7 +340,7 @@ abstract class CodeLineEditingController extends ValueNotifier<CodeLineEditingVa
   /// Expand the codes at [index] of lines.
   void expandChunk(int index);
 
-  /// Convert the [index] to the unforld line index.
+  /// Convert the [index] to the unfold line index.
   int index2lineIndex(int index);
 
   /// Get code line information at [lineIndex].

@@ -143,7 +143,7 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
   int get lineCount => codeLines.lineCount;
 
   @override
-  CodeLineSelection get unforldLineSelection {
+  CodeLineSelection get unfoldLineSelection {
     final int baseRawIndex;
     final int extentRawIndex;
     if (selection.isSameLine) {
@@ -1385,40 +1385,25 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
         );
       } else {
         final CodeLines newCodeLines = CodeLines.from(codeLines);
-        if (_isWrapedByClosureSymbol(extentLine.text, selection.extentOffset)) {
-          // Delete left and right closure symbols at same time, like this:
-          // abc{|}123 -> abc123
-          newCodeLines[selection.extentIndex] = extentLine.copyWith(
-            text: extentLine.substring(0, selection.extentOffset - 1) + extentLine.substring(selection.extentOffset + 1)
-          );
-          value = value.copyWith(
-            codeLines: newCodeLines,
-            selection: CodeLineSelection.collapsed(
-              index: selection.extentIndex,
-              offset: selection.extentOffset - 1
-            )
-          );
+        String forward = _codeTextAfter(selection.extent);
+        final int indentSizeInForward = _prefixWhitespaceCount(forward);
+        if (indentSizeInForward > 0 && indentSizeInForward % indent.length == 0) {
+          forward = forward.substring(indent.length);
         } else {
-          String forward = _codeTextAfter(selection.extent);
-          final int indentSizeInForward = _prefixWhitespaceCount(forward);
-          if (indentSizeInForward > 0 && indentSizeInForward % indent.length == 0) {
-            forward = forward.substring(indent.length);
-          } else {
-            // Delete the next character normally
-            final Characters characters = forward.characters;
-            forward = characters.skip(1).string;
-          }
-          newCodeLines[selection.extentIndex] = extentLine.copyWith(
-            text: _codeTextBefore(selection.extent) + forward
-          );
-          value = value.copyWith(
-            codeLines: newCodeLines,
-            selection: CodeLineSelection.collapsed(
-              index: selection.extentIndex,
-              offset: selection.extentOffset
-            )
-          );
+          // Delete the next character normally
+          final Characters characters = forward.characters;
+          forward = characters.skip(1).string;
         }
+        newCodeLines[selection.extentIndex] = extentLine.copyWith(
+          text: _codeTextBefore(selection.extent) + forward
+        );
+        value = value.copyWith(
+          codeLines: newCodeLines,
+          selection: CodeLineSelection.collapsed(
+            index: selection.extentIndex,
+            offset: selection.extentOffset
+          )
+        );
       }
     } else {
       _deleteSelection();
@@ -2452,7 +2437,7 @@ class _CodeLineEditingControllerDelegate implements CodeLineEditingController {
   CodeLineEditingValue? get preValue => _delegate.preValue;
 
   @override
-  CodeLineSelection get unforldLineSelection => _delegate.unforldLineSelection;
+  CodeLineSelection get unfoldLineSelection => _delegate.unfoldLineSelection;
 
   @override
   void redo() {

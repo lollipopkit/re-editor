@@ -441,7 +441,11 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
         _TextInputConfiguration(
           flutterViewId: View.maybeOf(context)?.viewId ?? 0,
           enableDeltaModel: true,
-          inputAction: TextInputAction.newline
+          inputAction: TextInputAction.newline,
+          autocorrect: false,
+          smartDashesType: SmartDashesType.disabled,
+          smartQuotesType: SmartQuotesType.disabled,
+          textCapitalization: TextCapitalization.none,
         ),
       );
       _remoteEditingValue = _buildTextEditingValue();
@@ -731,6 +735,10 @@ class _TextInputConfiguration extends TextInputConfiguration {
     required this.flutterViewId,
     required super.enableDeltaModel,
     required super.inputAction,
+    super.autocorrect = false,
+    super.smartDashesType = SmartDashesType.disabled,
+    super.smartQuotesType = SmartQuotesType.disabled,
+    super.textCapitalization = TextCapitalization.none,
   });
 
   @override
