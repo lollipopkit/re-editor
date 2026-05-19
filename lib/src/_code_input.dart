@@ -120,6 +120,15 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   }
 
   @override
+  bool onFocusReceived() {
+    if (!_focusNode.hasFocus && _focusNode.canRequestFocus) {
+      _focusNode.requestFocus();
+      return true;
+    }
+    return false;
+  }
+
+  @override
   void showToolbar() {
   }
 
