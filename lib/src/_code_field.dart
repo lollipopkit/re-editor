@@ -520,6 +520,8 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     markNeedsPaint();
   }
 
+  int? get maxLengthSingleLineRendering => _maxLengthSingleLineRendering;
+
   set maxLengthSingleLineRendering(int? value) {
     if (_maxLengthSingleLineRendering == value) {
       return;
@@ -614,30 +616,48 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     return _selectWord(localPosition);
   }
 
+  /// Scrolls vertically without leaving the scrollable range.
+  ///
+  /// Landing outside it is not harmless: the offset is then out of range, the
+  /// physics start a spring simulation to bring it back, and the reader sees a
+  /// bounce where the caller merely asked to show a line.
+  void _jumpVerticallyTo(double offset) {
+    final double? maxOffset = _verticalViewportSize;
+    _verticalViewport.jumpTo(maxOffset == null ? max(0, offset) : min(max(0, offset), maxOffset));
+  }
+
   void makePositionVisible(CodeLinePosition position, [int tryCount = 0]) {
     final Offset? offset = calculateTextPositionViewportOffset(position);
     if (offset == null) {
       if (_displayParagraphs.isNotEmpty) {
+        // The distance to a line below the viewport is counted from the last
+        // displayed line rather than the first: counting from `first` overshot
+        // by a whole screen.
         final CodeLineRenderParagraph first = _displayParagraphs.first;
         if (position.index < first.index) {
-          _verticalViewport.jumpTo(first.top + _preferredLineHeight * (position.index - first.index));
+          _jumpVerticallyTo(first.top + _preferredLineHeight * (position.index - first.index));
         }
         final CodeLineRenderParagraph last = _displayParagraphs.last;
         if (position.index > last.index) {
-          _verticalViewport.jumpTo(max(0, last.bottom - size.height + _preferredLineHeight * (position.index - first.index)));
+          _jumpVerticallyTo(last.bottom - size.height + _preferredLineHeight * (position.index - last.index));
         }
       }
       if (tryCount < 10) {
         SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
+          // Check whether the viewport is still valid.
+          final ViewportOffset viewport = _verticalViewport;
+          if (viewport is ScrollPosition && viewport.context.notificationContext == null) {
+            return;
+          }
           makePositionVisible(position, tryCount + 1);
         });
       }
       return;
     }
     if (offset.dy < 0) {
-      _verticalViewport.jumpTo(_verticalViewport.pixels + offset.dy);
+      _jumpVerticallyTo(_verticalViewport.pixels + offset.dy);
     } else if (offset.dy > size.height - _preferredLineHeight) {
-      _verticalViewport.jumpTo(_verticalViewport.pixels + offset.dy - (size.height - _preferredLineHeight));
+      _jumpVerticallyTo(_verticalViewport.pixels + offset.dy - (size.height - _preferredLineHeight));
     }
     if (_horizontalViewport != null) {
       if (offset.dx < 0) {
@@ -676,6 +696,11 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
       }
       if (tryCount < 10) {
         SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
+          // Check whether the viewport is still valid.
+          final ViewportOffset viewport = _verticalViewport;
+          if (viewport is ScrollPosition && viewport.context.notificationContext == null) {
+            return;
+          }
           makePositionCenterIfInvisible(position, tryCount: tryCount + 1);
         });
       }
@@ -995,7 +1020,28 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     return null;
   }
 
-  void _updateDisplayRenderParagraphs() {
+  /// Bounds the number of layout cycles, the way `RenderViewport` does with
+  /// `_maxLayoutCycles`.
+  static const int _kMaxLayoutCycles = 10;
+
+  /// [cycle] counts how many times this layout has already restarted itself.
+  ///
+  /// Laying out may correct the scroll offset, and a corrected offset asks for
+  /// another layout. That recursion had no limit and did not always converge:
+  /// `applyContentDimensions` below starts a ballistic activity when the offset
+  /// is out of range, the activity moves the offset again, and the next cycle
+  /// sees the same mismatch. The application froze hard — the stack was
+  /// thousands of frames of this method.
+  ///
+  /// The estimate that drives it cannot be exact in principle: the height of
+  /// the lines outside the viewport is guessed as one grid line each, while a
+  /// wrapped line takes more. So the loop needs a bound rather than a better
+  /// guess. Stopping early costs at most one imprecise frame: the next layout
+  /// starts from the corrected offset and settles.
+  void _updateDisplayRenderParagraphs([int cycle = 0]) {
+    if (cycle > _kMaxLayoutCycles) {
+      return;
+    }
     final double effectiveWidth;
     if (_horizontalViewport == null) {
       effectiveWidth = constraints.maxWidth - _padding.horizontal;
@@ -1015,7 +1061,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     } else {
       if (_codes.length <= _displayParagraphs.first.index) {
         _displayParagraphs.clear();
-        _updateDisplayRenderParagraphs();
+        _updateDisplayRenderParagraphs(cycle + 1);
         return;
       }
       if (target < _displayParagraphs.first.top) {
@@ -1061,7 +1107,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     }
     // The codes length maybe changed, this will make the displayParagraphs empty.
     if (_displayParagraphs.isEmpty) {
-      _updateDisplayRenderParagraphs();
+      _updateDisplayRenderParagraphs(cycle + 1);
       return;
     }
     final double totalHeight = _displayParagraphs.last.bottom + (_codes.length - (_displayParagraphs.last.index + 1)) * _preferredLineHeight + paddingBottom;
@@ -1075,9 +1121,18 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
       _horizontalViewportSize = max(0, maxWidth + _padding.horizontal - size.width);
       _horizontalViewport!.applyContentDimensions(0, _horizontalViewportSize!);
     }
-    // applyContentDimensions will change the _verticalViewport.pixels, we should rebuild.
-    if (_displayParagraphs.first.offset.dy > _verticalViewport.pixels + paddingTop) {
-      _updateDisplayRenderParagraphs();
+    // applyContentDimensions will change the _verticalViewport.pixels, we should
+    // rebuild — but only while there is something above to build.
+    //
+    // The gap at the top also appears when the offset is simply out of range, a
+    // hair above the first line, left by physics that have not settled yet.
+    // Rebuilding cannot close that gap: line 0 is already the first one shown.
+    // Layout then asked for layout, and the ballistic activity that would have
+    // pulled the offset back to zero was restarted by every frame and never got
+    // to run. The offset stayed a fraction of a point above the top and the
+    // editor shuddered there for as long as the file was open.
+    if (_displayParagraphs.first.index > 0 && _displayParagraphs.first.offset.dy > _verticalViewport.pixels + paddingTop) {
+      _updateDisplayRenderParagraphs(cycle + 1);
       return;
     }
 
@@ -1741,6 +1796,24 @@ class _CodeFieldFloatingCursorPainter extends _CodeFieldExtraPainter {
   void _drawPreviewCursor(Canvas canvas, Offset offset, Size size) {
     _paint.color = _color.withAlpha(150);
     canvas.drawRRect(RRect.fromRectXY(Rect.fromLTWH(offset.dx - _width / 2, offset.dy, _width, _height), _width / 2, _width / 2), _paint);
+  }
+
+}
+
+extension _GlobalKeyExtension on GlobalKey {
+
+  _CodeFieldRender? get render {
+    final BuildContext? context = currentContext;
+    if (context is! RenderObjectElement || !context.mounted) {
+      return null;
+    }
+
+    final RenderObject render = context.renderObject;
+    if (render is! _CodeFieldRender || !render.attached || !render.hasSize) {
+      return null;
+    }
+
+    return render;
   }
 
 }

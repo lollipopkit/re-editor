@@ -26,7 +26,7 @@ class _CodeEditable extends StatefulWidget {
   final bool showCursorWhenReadOnly;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
-  final Widget? sperator;
+  final Widget? leadingDivider;
   final Border? border;
   final BorderRadius? borderRadius;
   final Clip clipBehavior;
@@ -67,7 +67,7 @@ class _CodeEditable extends StatefulWidget {
     required this.showCursorWhenReadOnly,
     required this.padding,
     required this.margin,
-    required this.sperator,
+    required this.leadingDivider,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -247,8 +247,8 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
             children: [
               if (indicator != null)
                 indicator,
-              if (widget.sperator != null)
-                widget.sperator!,
+              if (widget.leadingDivider != null)
+                widget.leadingDivider!,
               Expanded(
                 child: RepaintBoundary(
                   child: CompositedTransformTarget(
@@ -397,7 +397,13 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
     if (!mounted) {
       return;
     }
-    final _CodeAutocompleteState? autocompleteState = context.findAncestorStateOfType<_CodeAutocompleteState>();
+    final _CodeAutocompleteState? autocompleteState;
+    try {
+      autocompleteState = context.findAncestorStateOfType<_CodeAutocompleteState>();
+    } catch (e) {
+      // Ignore the error when the widget is disposed.
+      return;
+    }
     if (autocompleteState == null) {
       return;
     }
@@ -409,7 +415,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       autocompleteState.dismiss();
       return;
     }
-    final _CodeFieldRender? render = widget.editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = widget.editorKey.render;
     if (render == null) {
       autocompleteState.dismiss();
       return;
@@ -425,7 +431,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       lineHeight: render.lineHeight,
       value: widget.controller.value,
       onAutocomplete: (value) {
-        autocompleteState.dismiss();
+        autocompleteState?.dismiss();
         final CodeLineSelection selection = widget.controller.selection;
         widget.controller.replaceSelection(value.word, selection.copyWith(
           baseOffset: selection.baseOffset - value.input.length,

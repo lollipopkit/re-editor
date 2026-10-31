@@ -202,7 +202,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   @override
   void updateFloatingCursor(RawFloatingCursorPoint point) {
     _updateCausedByFloatingCursor = true;
-    final _CodeFieldRender? render = _editorKey?.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = _editorKey?.render;
     if (render == null) {
       return;
     }
@@ -329,6 +329,8 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   void insertContent(KeyboardInsertedContent content) {
   }
 
+  bool onFocusReceived() => false;
+
   void ensureInput() {
     if (_focusNode.hasFocus) {
       if (!_readOnly) {
@@ -387,7 +389,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     if (!_hasInputConnection) {
       return;
     }
-    final _CodeFieldRender? render = _editorKey?.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = _editorKey?.render;
     if (render == null) {
       return;
     }
@@ -416,7 +418,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     if (!_hasInputConnection) {
       return;
     }
-    final _CodeFieldRender? render = _editorKey?.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = _editorKey?.render;
     if (render == null || !render.hasSize) {
       return;
     }
@@ -455,6 +457,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
           smartDashesType: SmartDashesType.disabled,
           smartQuotesType: SmartQuotesType.disabled,
           textCapitalization: TextCapitalization.none,
+          keyboardAppearance: Theme.of(context).brightness,
         ),
       );
       _remoteEditingValue = _buildTextEditingValue();
@@ -748,6 +751,7 @@ class _TextInputConfiguration extends TextInputConfiguration {
     super.smartDashesType = SmartDashesType.disabled,
     super.smartQuotesType = SmartQuotesType.disabled,
     super.textCapitalization = TextCapitalization.none,
+    super.keyboardAppearance,
   });
 
   @override

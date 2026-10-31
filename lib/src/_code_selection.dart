@@ -34,7 +34,7 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
   bool _longPressOnSelection = false;
   CodeLineSelection? _anchorSelection;
 
-  _CodeFieldRender get render => widget.editorKey.currentContext?.findRenderObject() as _CodeFieldRender;
+  _CodeFieldRender get render => widget.editorKey.render!;
 
   bool _tapping = false;
 
@@ -375,10 +375,18 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
   void _autoScrollWhenDragging() {
     final Offset? position = _dragPosition;
     Future.delayed(const Duration(milliseconds: 100), (() {
+      // Widget may have been disposed while the delayed callback was pending.
+      if (!mounted) {
+        return;
+      }
       if (_dragPosition == null || position == null) {
         return;
       }
       if (_dragging) {
+        final _CodeFieldRender? render = widget.editorKey.render;
+        if (render == null) {
+          return;
+        }
         render.autoScrollWhenDragging(_dragPosition!);
         _extendSelection(_dragPosition!, _SelectionChangedCause.drag);
       }
@@ -618,7 +626,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
     controller.removeListener(_updateTextSelectionHandle);
     _effectiveStartHandleVisibility.dispose();
     _effectiveEndHandleVisibility.dispose();
-    final _CodeFieldRender? render = editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = editorKey.render;
     if (render == null) {
       return;
     }
@@ -627,7 +635,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
   }
 
   double get lineHeight {
-    final _CodeFieldRender? render = editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = editorKey.render;
     if (render == null) {
       return 0;
     }
@@ -635,11 +643,11 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
   }
 
   bool get attached {
-    final _CodeFieldRender? render = editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = editorKey.render;
     return render != null && render.attached;
   }
 
-  _CodeFieldRender get ensureRender => editorKey.currentContext?.findRenderObject() as _CodeFieldRender;
+  _CodeFieldRender get ensureRender => editorKey.render!;
 
   void _updateTextSelectionHandle() {
     if (!_handlesVisible) {
@@ -652,7 +660,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
   }
 
   void _updateTextSelectionOverlayVisibilities() {
-    final _CodeFieldRender? render = editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
+    final _CodeFieldRender? render = editorKey.render;
     if (render == null) {
       return;
     }
@@ -909,7 +917,12 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
       if (!_startHandleDragging) {
         return;
       }
-      ensureRender.autoScrollWhenDragging(_startHandleDragLastPosition);
+      // Overlay/controller may outlive the field after dispose.
+      final _CodeFieldRender? render = editorKey.render;
+      if (render == null) {
+        return;
+      }
+      render.autoScrollWhenDragging(_startHandleDragLastPosition);
       _handleStartHandleDragUpdate(_startHandleDragLastPosition);
       _autoScrollWhenStartHandleDragging();
     }));
@@ -920,7 +933,11 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
       if (!_endHandleDragging) {
         return;
       }
-      ensureRender.autoScrollWhenDragging(_endHandleDragLastPosition);
+      final _CodeFieldRender? render = editorKey.render;
+      if (render == null) {
+        return;
+      }
+      render.autoScrollWhenDragging(_endHandleDragLastPosition);
       _handleEndHandleDragUpdate(_endHandleDragLastPosition);
       _autoScrollWhenEndHandleDragging();
     }));

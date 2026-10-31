@@ -59,7 +59,7 @@ class _JsonEditorState extends State<JsonEditor> {
       },
       findBuilder: (context, controller, readOnly) => CodeFindPanelView(controller: controller, readOnly: readOnly),
       toolbarController: const ContextMenuControllerImpl(),
-      sperator: Container(
+      leadingDivider: Container(
         width: 1,
         color: Colors.blue
       ),

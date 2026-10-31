@@ -485,12 +485,38 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
 
   @override
   void moveCursorToPageUp() {
-    // TODO
+    _moveCursorByPage(false);
   }
 
   @override
   void moveCursorToPageDown() {
-    // TODO
+    _moveCursorByPage(true);
+  }
+
+  /// Moves the cursor a screen up or down.
+  ///
+  /// The page is measured from the viewport: as many lines as fit on screen,
+  /// less one kept as an overlap so that the reader can connect what was on
+  /// screen with what is there now. With word wrap on, a wrapped line still
+  /// counts as one, so the jump may be longer than a screen.
+  void _moveCursorByPage(bool forward) {
+    final _CodeFieldRender? render = _render;
+    if (render == null || !render.hasSize || render.lineHeight <= 0) {
+      // Nothing is laid out yet, so there is no page to measure. Moving by a
+      // single line is still better than standing still.
+      moveCursor(forward ? AxisDirection.down : AxisDirection.up);
+      return;
+    }
+
+    final int page = max(1, (render.size.height / render.lineHeight).floor() - 1);
+    final CodeLinePosition current = selection.extent;
+    final int index = min(max(0, current.index + (forward ? page : -page)), codeLines.length - 1);
+
+    selection = CodeLineSelection.collapsed(
+      index: index,
+      offset: min(codeLines[index].length, current.offset)
+    );
+    makeCursorVisible();
   }
 
   @override
@@ -1123,7 +1149,7 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
     super.dispose();
   }
 
-  _CodeFieldRender? get _render => _editorKey?.currentContext?.findRenderObject() as _CodeFieldRender?;
+  _CodeFieldRender? get _render => _editorKey?.render;
 
   bool _isAlphanumeric(int codeUnit) {
     return (codeUnit <= 57 && codeUnit >= 48) ||
@@ -1913,7 +1939,7 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
     if (text.isEmpty) {
       return false;
     }
-    if (offset == 0 || offset == text.length) {
+    if (offset - 1 < 0 || offset + 1 > text.length) {
       return false;
     }
     return _kClosureAndQuates.contains(text.substring(offset - 1, offset + 1));

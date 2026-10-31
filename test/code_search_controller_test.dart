@@ -886,4 +886,101 @@ void main() {
       }
     });
   });
+
+  group('CodeEditor ', () {
+    testWidgets('ignores notifications from a previous findController after swap', (tester) async {
+      final CodeLineEditingController editingController = CodeLineEditingController.fromText('abc');
+      final CodeFindController oldFindController = CodeFindController(editingController);
+      final CodeFindController newFindController = CodeFindController(editingController);
+      int buildCount = 0;
+      CodeFindController? lastBuiltController;
+
+      PreferredSizeWidget buildFindWidget(
+        BuildContext context,
+        CodeFindController controller,
+        bool readonly,
+      ) {
+        buildCount++;
+        lastBuiltController = controller;
+        return const PreferredSize(
+          preferredSize: Size.zero,
+          child: SizedBox.shrink(),
+        );
+      }
+
+      await tester.pumpWidget(MaterialApp(
+        home: CodeEditor(
+          controller: editingController,
+          findController: oldFindController,
+          findBuilder: buildFindWidget,
+          autofocus: false,
+        ),
+      ));
+
+      expect(lastBuiltController, same(oldFindController));
+
+      await tester.pumpWidget(MaterialApp(
+        home: CodeEditor(
+          controller: editingController,
+          findController: newFindController,
+          findBuilder: buildFindWidget,
+          autofocus: false,
+        ),
+      ));
+
+      expect(lastBuiltController, same(newFindController));
+      final int buildCountAfterSwap = buildCount;
+
+      oldFindController.findMode();
+      await tester.pump();
+
+      expect(buildCount, buildCountAfterSwap);
+      expect(lastBuiltController, same(newFindController));
+
+      newFindController.findMode();
+      await tester.pump();
+
+      expect(buildCount, greaterThan(buildCountAfterSwap));
+      expect(lastBuiltController, same(newFindController));
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+
+      oldFindController.dispose();
+      newFindController.dispose();
+      editingController.dispose();
+    });
+
+    testWidgets('ignores stale findController notifications after the editor is removed', (tester) async {
+      final CodeLineEditingController editingController = CodeLineEditingController.fromText('abc');
+      final CodeFindController oldFindController = CodeFindController(editingController);
+      final CodeFindController newFindController = CodeFindController(editingController);
+
+      await tester.pumpWidget(MaterialApp(
+        home: CodeEditor(
+          controller: editingController,
+          findController: oldFindController,
+          autofocus: false,
+        ),
+      ));
+
+      await tester.pumpWidget(MaterialApp(
+        home: CodeEditor(
+          controller: editingController,
+          findController: newFindController,
+          autofocus: false,
+        ),
+      ));
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+
+      oldFindController.findMode();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+
+      oldFindController.dispose();
+      newFindController.dispose();
+      editingController.dispose();
+    });
+  });
 }

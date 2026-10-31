@@ -198,7 +198,7 @@ class CodeEditor extends StatefulWidget {
     this.findBuilder,
     this.shortcutsActivatorsBuilder,
     this.shortcutOverrideActions,
-    this.sperator,
+    this.leadingDivider,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -211,7 +211,7 @@ class CodeEditor extends StatefulWidget {
     this.maxLengthSingleLineRendering,
     this.chunkAnalyzer,
     this.commentFormatter,
-  }) : assert(indicatorBuilder != null || (indicatorBuilder == null && sperator == null));
+  }) : assert(indicatorBuilder != null || (indicatorBuilder == null && leadingDivider == null));
 
   /// Similar to [TextField], editor uses [CodeLineEditingController] as the content controller.
   final CodeLineEditingController? controller;
@@ -266,8 +266,8 @@ class CodeEditor extends StatefulWidget {
   /// Override built-in shortcut key actions.
   final Map<Type, Action<Intent>>? shortcutOverrideActions;
 
-  /// A sperator widget between indicator and editor field.
-  final Widget? sperator;
+  /// A leadingDivider widget between indicator and editor field.
+  final Widget? leadingDivider;
 
   /// The border of the editor.
   final Border? border;
@@ -460,11 +460,13 @@ class _CodeEditorState extends State<CodeEditor> {
       _editingController.bindEditor(_editorKey);
     }
     if (oldWidget.findController != widget.findController || oldWidget.controller != widget.controller) {
+      final CodeFindController oldFindController = _findController;
       if (oldWidget.findController == null) {
-        _findController.dispose();
+        oldFindController.dispose();
+      } else {
+        oldFindController.removeListener(_updateWidget);
       }
       _findController = widget.findController ?? CodeFindController(_editingController);
-      _findController.removeListener(_updateWidget);
       _findController.addListener(_updateWidget);
     }
     if (oldWidget.scrollController != widget.scrollController) {
@@ -520,7 +522,7 @@ class _CodeEditorState extends State<CodeEditor> {
       chunkIndicatorColor: widget.style?.chunkIndicatorColor,
       cursorWidth: widget.style?.cursorWidth ?? _kDefaultCaretWidth,
       showCursorWhenReadOnly: widget.showCursorWhenReadOnly ?? true,
-      sperator: widget.sperator,
+      leadingDivider: widget.leadingDivider,
       border: widget.border,
       borderRadius: widget.borderRadius,
       clipBehavior: widget.clipBehavior,

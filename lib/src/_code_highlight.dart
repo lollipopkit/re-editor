@@ -213,7 +213,12 @@ class _CodeHighlightEngine {
       return;
     }
     final Map<String, CodeHighlightThemeMode>? modes = _theme?.languages;
-    if (modes == null) {
+    // An empty language map means there is nothing to highlight, which is not
+    // a reason to fail. Without this the payload carried empty lists of sizes,
+    // `_run` reduced them, and `Bad state: No element` was thrown inside the
+    // isolate: highlighting died silently and left an unhandled exception in
+    // the console.
+    if (modes == null || modes.isEmpty) {
       callback(const []);
       return;
     }

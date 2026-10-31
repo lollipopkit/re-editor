@@ -345,6 +345,12 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultMacCodeShortcutsAc
     SingleActivator(LogicalKeyboardKey.arrowDown, meta: true),
     SingleActivator(LogicalKeyboardKey.end, control: true)
   ],
+  CodeShortcutType.cursorMovePageUp: [
+    SingleActivator(LogicalKeyboardKey.pageUp)
+  ],
+  CodeShortcutType.cursorMovePageDown: [
+    SingleActivator(LogicalKeyboardKey.pageDown)
+  ],
   CodeShortcutType.cursorMoveWordBoundaryBackward: [
     SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true)
   ],
@@ -405,7 +411,11 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultMacCodeShortcutsAc
     SingleActivator(LogicalKeyboardKey.enter),
     SingleActivator(LogicalKeyboardKey.enter, shift: true),
     SingleActivator(LogicalKeyboardKey.enter, meta: true),
-    SingleActivator(LogicalKeyboardKey.enter, meta: true, shift: true)
+    SingleActivator(LogicalKeyboardKey.enter, meta: true, shift: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, shift: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, meta: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, meta: true, shift: true)
   ],
   CodeShortcutType.transposeCharacters: [
     SingleActivator(LogicalKeyboardKey.keyT, control: true)
@@ -444,18 +454,23 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultCommonCodeShortcut
     SingleActivator(LogicalKeyboardKey.keyX, control: true)
   ],
   CodeShortcutType.copy: [
-    SingleActivator(LogicalKeyboardKey.keyC, control: true)
+    SingleActivator(LogicalKeyboardKey.keyC, control: true),
+    SingleActivator(LogicalKeyboardKey.insert, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad0, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad0, control: true),
   ],
   CodeShortcutType.paste: [
-    SingleActivator(LogicalKeyboardKey.keyV, control: true)
+    SingleActivator(LogicalKeyboardKey.keyV, control: true),
+    SingleActivator(LogicalKeyboardKey.insert, shift: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad0, shift: true),
   ],
   CodeShortcutType.delete: [
-    SingleActivator(LogicalKeyboardKey.delete,),
-    SingleActivator(LogicalKeyboardKey.delete, shift: true),
+    SingleActivator(LogicalKeyboardKey.delete),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpadDecimal, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpadDecimal),
   ],
   CodeShortcutType.backspace: [
-    SingleActivator(LogicalKeyboardKey.backspace,),
-    SingleActivator(LogicalKeyboardKey.backspace, shift: true),
+    SingleActivator(LogicalKeyboardKey.backspace),
   ],
   CodeShortcutType.undo: [
     SingleActivator(LogicalKeyboardKey.keyZ, control: true)
@@ -470,89 +485,124 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultCommonCodeShortcut
     SingleActivator(LogicalKeyboardKey.keyD, control: true)
   ],
   CodeShortcutType.lineDeleteForward: [
-    SingleActivator(LogicalKeyboardKey.delete, control: true)
+    SingleActivator(LogicalKeyboardKey.delete, shift: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpadDecimal, shift: true),
   ],
   CodeShortcutType.lineDeleteBackward: [
-    SingleActivator(LogicalKeyboardKey.backspace, control: true)
+    SingleActivator(LogicalKeyboardKey.backspace, shift: true)
   ],
   CodeShortcutType.lineMoveUp: [
-    SingleActivator(LogicalKeyboardKey.arrowUp, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowUp, alt: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad8, shift: true, alt: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad8, alt: true),
   ],
   CodeShortcutType.lineMoveDown: [
-    SingleActivator(LogicalKeyboardKey.arrowDown, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowDown, alt: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad2, shift: true, alt: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad2, alt: true),
   ],
   CodeShortcutType.cursorMoveUp: [
-    SingleActivator(LogicalKeyboardKey.arrowUp)
+    SingleActivator(LogicalKeyboardKey.arrowUp),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad8, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad8),
   ],
   CodeShortcutType.cursorMoveDown: [
-    SingleActivator(LogicalKeyboardKey.arrowDown)
+    SingleActivator(LogicalKeyboardKey.arrowDown),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad2, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad2)
   ],
   CodeShortcutType.cursorMoveForward: [
-    SingleActivator(LogicalKeyboardKey.arrowRight)
+    SingleActivator(LogicalKeyboardKey.arrowRight),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad6, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad6)
   ],
   CodeShortcutType.cursorMoveBackward: [
-    SingleActivator(LogicalKeyboardKey.arrowLeft)
+    SingleActivator(LogicalKeyboardKey.arrowLeft),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad4, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad4)
   ],
   CodeShortcutType.cursorMoveLineStart: [
-    SingleActivator(LogicalKeyboardKey.arrowLeft, control: true),
-    SingleActivator(LogicalKeyboardKey.home)
+    SingleActivator(LogicalKeyboardKey.home),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad7, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad7)
   ],
   CodeShortcutType.cursorMoveLineEnd: [
-    SingleActivator(LogicalKeyboardKey.arrowRight, control: true),
-    SingleActivator(LogicalKeyboardKey.end)
+    SingleActivator(LogicalKeyboardKey.end),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad1, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad1)
   ],
   CodeShortcutType.cursorMovePageStart: [
-    SingleActivator(LogicalKeyboardKey.arrowUp, control: true),
-    SingleActivator(LogicalKeyboardKey.home, control: true)
+    SingleActivator(LogicalKeyboardKey.home, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad7, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad7, control: true),
   ],
   CodeShortcutType.cursorMovePageEnd: [
-    SingleActivator(LogicalKeyboardKey.arrowDown, control: true),
-    SingleActivator(LogicalKeyboardKey.end, control: true)
+    SingleActivator(LogicalKeyboardKey.end, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad1, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad1, control: true),
+  ],
+  CodeShortcutType.cursorMovePageUp: [
+    SingleActivator(LogicalKeyboardKey.pageUp),
+  ],
+  CodeShortcutType.cursorMovePageDown: [
+    SingleActivator(LogicalKeyboardKey.pageDown),
   ],
   CodeShortcutType.cursorMoveWordBoundaryBackward: [
-    SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowLeft, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad4, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad4, control: true),
   ],
   CodeShortcutType.cursorMoveWordBoundaryForward: [
-    SingleActivator(LogicalKeyboardKey.arrowRight, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowRight, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpad6, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad6, control: true),
   ],
   CodeShortcutType.selectionExtendUp: [
-    SingleActivator(LogicalKeyboardKey.arrowUp, shift: true)
+    SingleActivator(LogicalKeyboardKey.arrowUp, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad8, shift: true),
   ],
   CodeShortcutType.selectionExtendDown: [
-    SingleActivator(LogicalKeyboardKey.arrowDown, shift: true)
+    SingleActivator(LogicalKeyboardKey.arrowDown, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad2, shift: true),
   ],
   CodeShortcutType.selectionExtendForward: [
-    SingleActivator(LogicalKeyboardKey.arrowRight, shift: true)
+    SingleActivator(LogicalKeyboardKey.arrowRight, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad6, shift: true),
   ],
   CodeShortcutType.selectionExtendBackward: [
-    SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true)
+    SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad4, shift: true),
   ],
   CodeShortcutType.selectionExtendPageStart: [
-    SingleActivator(LogicalKeyboardKey.home, shift: true, control: true)
+    SingleActivator(LogicalKeyboardKey.home, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad7, shift: true, control: true),
   ],
   CodeShortcutType.selectionExtendPageEnd: [
-    SingleActivator(LogicalKeyboardKey.end, shift: true, control: true)
+    SingleActivator(LogicalKeyboardKey.end, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad1, shift: true, control: true),
   ],
   CodeShortcutType.selectionExtendLineStart: [
-    SingleActivator(LogicalKeyboardKey.home, shift: true)
+    SingleActivator(LogicalKeyboardKey.home, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad7, shift: true),
   ],
   CodeShortcutType.selectionExtendLineEnd: [
-    SingleActivator(LogicalKeyboardKey.end, shift: true)
+    SingleActivator(LogicalKeyboardKey.end, shift: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad1, shift: true),
   ],
   CodeShortcutType.selectionExtendWordBoundaryForward: [
-    SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad4, shift: true, control: true),
   ],
   CodeShortcutType.selectionExtendWordBoundaryBackward: [
-    SingleActivator(LogicalKeyboardKey.arrowRight, shift: true, alt: true)
+    SingleActivator(LogicalKeyboardKey.arrowRight, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpad6, shift: true, control: true),
   ],
   CodeShortcutType.wordDeleteForward: [
-    SingleActivator(LogicalKeyboardKey.delete, alt: true),
-    SingleActivator(LogicalKeyboardKey.delete, alt: true, shift: true),
     SingleActivator(LogicalKeyboardKey.delete, control: true),
+  // NumLockedSingleActivator(LogicalKeyboardKey.numpadDecimal, shift: true, control: true),
+  // NumUnlockedSingleActivator(LogicalKeyboardKey.numpadDecimal, control: true),
   ],
   CodeShortcutType.wordDeleteBackward: [
-    SingleActivator(LogicalKeyboardKey.backspace, alt: true),
-    SingleActivator(LogicalKeyboardKey.backspace, alt: true, shift: true),
     SingleActivator(LogicalKeyboardKey.backspace, control: true),
   ],
   CodeShortcutType.indent: [
@@ -565,7 +615,11 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultCommonCodeShortcut
     SingleActivator(LogicalKeyboardKey.enter),
     SingleActivator(LogicalKeyboardKey.enter, shift: true),
     SingleActivator(LogicalKeyboardKey.enter, control: true),
-    SingleActivator(LogicalKeyboardKey.enter, control: true, shift: true)
+    SingleActivator(LogicalKeyboardKey.enter, control: true, shift: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, shift: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, control: true),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, control: true, shift: true)
   ],
   CodeShortcutType.transposeCharacters: [
     SingleActivator(LogicalKeyboardKey.keyT, control: true)
@@ -595,3 +649,43 @@ const Map<CodeShortcutType, List<ShortcutActivator>> _kDefaultCommonCodeShortcut
     SingleActivator(LogicalKeyboardKey.escape)
   ],
 };
+
+class NumLockedSingleActivator extends SingleActivator {
+
+  const NumLockedSingleActivator(
+    super.trigger, {
+    super.control = false,
+    super.shift = false,
+    super.alt = false,
+    super.meta = false,
+    super.includeRepeats = true,
+  });
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    // lockModesEnabled is not correctly if the numLock is enabled before the app is started.
+    // See https://github.com/flutter/flutter/issues/98377
+    return super.accepts(event, state) && state.lockModesEnabled.contains(KeyboardLockMode.numLock);
+  }
+
+}
+
+class NumUnlockedSingleActivator extends SingleActivator {
+
+  const NumUnlockedSingleActivator(
+    super.trigger, {
+    super.control = false,
+    super.shift = false,
+    super.alt = false,
+    super.meta = false,
+    super.includeRepeats = true,
+  });
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    // lockModesEnabled is not correctly if the numLock is enabled before the app is started.
+    // See https://github.com/flutter/flutter/issues/98377
+    return super.accepts(event, state) && !state.lockModesEnabled.contains(KeyboardLockMode.numLock);
+  }
+
+}
