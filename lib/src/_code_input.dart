@@ -49,6 +49,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     _controller.removeListener(_onCodeEditingChanged);
     _controller = value;
     _controller.addListener(_onCodeEditingChanged);
+    _remoteWindow = null;
     _onCodeEditingChanged();
   }
 
@@ -103,7 +104,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   AutofillScope? get currentAutofillScope => null;
 
   @override
-  TextEditingValue? get currentTextEditingValue => _buildTextEditingValue().value;
+  TextEditingValue? get currentTextEditingValue => _remoteEditingValue ?? _buildTextEditingValue().value;
 
   @override
   void performAction(TextInputAction action) {
@@ -166,6 +167,10 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
 
     final TextEditingValue remoteValue = _remoteEditingValue!;
     final _ImeWindow window = _remoteWindow!;
+    if (window.single) {
+      _applyLineDeltas(textEditingDeltas, textEditingDeltas, remoteValue);
+      return;
+    }
     final _LineDeltas? lineDeltas = _localizeDeltas(textEditingDeltas, remoteValue, window);
     if (lineDeltas != null) {
       _applyLineDeltas(textEditingDeltas, lineDeltas.deltas, lineDeltas.value);
@@ -206,7 +211,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     // print('update composing ${newValue.composing}');
     if (newValue.usePrefix) {
       if (newValue.selection.isCollapsed && newValue.selection.start == 0) {
-        _controller.deleteBackward();
+        _deleteBackward();
       } else {
         _controller.edit(newValue.removePrefixIfNecessary());
       }
@@ -229,20 +234,20 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     }
     _remoteEditingValue = newValue;
     final int prefix = window.lineStarts.first;
-    if (prefix > 0 && !newValue.startWithPrefix) {
-      // The prefix was deleted, which is a backspace at the start of the lines.
-      _controller.deleteBackward();
-      notifyListeners();
+    final String oldText = remoteValue.text;
+    final String newText = newValue.text;
+    if (prefix > 0 && newText == oldText.substring(prefix)) {
+      // The prefix alone was deleted: a backspace before the first line.
+      _deleteBackward();
       return;
     }
-    final String oldText = remoteValue.text.substring(prefix);
-    final String newText = newValue.text.substring(prefix);
     if (oldText == newText) {
       final TextSelection textSelection = newValue.selection;
       // What an input method's select all does: it can only select what it
-      // was given.
-      if (!window.whole && newText.isNotEmpty && textSelection.start <= prefix
-        && textSelection.end >= newValue.text.length) {
+      // was given. The window follows the selection, so a selection reaches
+      // both of its ends only at the ends of the code, where it is whole.
+      if (!window.whole && newText.length > prefix && textSelection.start <= prefix
+        && textSelection.end >= newText.length) {
         _controller.selectAll();
       } else {
         _applyRemote(() {
@@ -264,11 +269,24 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       && oldText.codeUnitAt(oldText.length - 1 - tail) == newText.codeUnitAt(newText.length - 1 - tail)) {
       tail++;
     }
-    final CodeLinePosition start = window.positionOf(prefix + head);
-    final CodeLinePosition end = window.positionOf(prefix + oldText.length - tail);
-    final _ImeWindow newWindow = _ImeWindow.fromText(window.start, newValue.text, prefix, window.whole);
+    final TextSelection oldSelection = remoteValue.selection;
+    if (head + tail + 1 == oldText.length && head + tail == newText.length && oldText.codeUnitAt(head) == 0x0A
+      && oldSelection.isCollapsed && oldSelection.baseOffset == head + 1) {
+      // The line break before the cursor: a backspace at the start of a line,
+      // which the editor has its own handling for.
+      _deleteBackward();
+      return;
+    }
+    final CodeLinePosition start = window.positionOf(head);
+    final CodeLinePosition end = window.positionOf(oldText.length - tail);
+    String replacement = newText.substring(head, newText.length - tail);
+    if (prefix > 0) {
+      replacement = replacement.replaceAll(_kPrefix, '');
+    }
+    final _ImeWindow newWindow = _ImeWindow.fromText(window, newText,
+      newText.startsWith(_kPrefix) ? prefix : 0);
     _applyRemote(() {
-      _controller.replaceSelection(newText.substring(head, newText.length - tail), CodeLineSelection(
+      _controller.replaceSelection(replacement, CodeLineSelection(
         baseIndex: start.index,
         baseOffset: start.offset,
         extentIndex: end.index,
@@ -279,6 +297,15 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
         composing: newWindow.composingOf(newValue.composing, newValue.selection),
       );
     });
+    notifyListeners();
+  }
+
+  /// A backspace, after which the input method is told what is there even
+  /// when nothing changed: it has already removed what it thinks was deleted.
+  void _deleteBackward() {
+    _controller.deleteBackward();
+    _remoteEditingValue = null;
+    _updateRemoteEditingValueIfNeeded();
     notifyListeners();
   }
 
@@ -675,6 +702,8 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       _textInputConnection!.close();
     }
     _textInputConnection = null;
+    _remoteEditingValue = null;
+    _remoteWindow = null;
   }
 
   /// What the input method is given: the selected lines and up to
@@ -686,13 +715,26 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   /// change. A folded line ends it, since its text is not what is shown.
   _ImeValue _buildTextEditingValue() {
     final CodeLines lines = codeLines;
+    final int prefix = _usePrefix ? _kPrefix.length : 0;
     int first = selection.startIndex;
     int last = selection.endIndex;
+    int selected = 0;
+    for (int i = first; i <= last && selected <= _kImeWindowChars; i++) {
+      selected += lines[i].length + 1;
+    }
+    if (selected > _kImeWindowChars) {
+      return _buildLineValue(prefix);
+    }
     final _ImeWindow? previous = _remoteWindow;
-    if (composing.isValid && previous != null && previous.start <= first && previous.end >= last
-      && previous.end < lines.length) {
+    final bool reuse = previous != null && !previous.single && previous.lineCount == lines.length
+      && previous.start <= first && previous.end >= last
       // Kept while composing: a window that moved would replace the text the
-      // input method is composing in.
+      // input method is composing in. Otherwise until the selection nears an
+      // edge, so moving the cursor does not resend it.
+      && (composing.isValid || (
+        (previous.start == 0 || first - previous.start >= _kImeWindowMargin)
+        && (previous.end == lines.length - 1 || previous.end - last >= _kImeWindowMargin)));
+    if (reuse) {
       first = previous.start;
       last = previous.end;
     } else {
@@ -715,7 +757,6 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
         last++;
       }
     }
-    final int prefix = kIsIOS || kIsAndroid ? _kPrefix.length : 0;
     final StringBuffer text = StringBuffer(prefix > 0 ? _kPrefix : '');
     final List<int> lineStarts = [];
     final List<int> lineLengths = [];
@@ -731,7 +772,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       start: first,
       lineStarts: lineStarts,
       lineLengths: lineLengths,
-      whole: first == 0 && last == lines.length - 1,
+      lineCount: lines.length,
     );
     final TextRange textComposing;
     if (composing.isValid) {
@@ -752,6 +793,39 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     ), window);
   }
 
+  /// The selection's first line alone, for a selection too long to send: the
+  /// input method holds its part of that line, and an edit to it applies to
+  /// the whole selection.
+  _ImeValue _buildLineValue(int prefix) {
+    final TextSelection textSelection;
+    if (selection.baseIndex < selection.extentIndex) {
+      textSelection = TextSelection(
+        baseOffset: prefix + selection.baseOffset,
+        extentOffset: prefix + codeLines[selection.baseIndex].length,
+      );
+    } else {
+      textSelection = TextSelection(
+        baseOffset: prefix,
+        extentOffset: prefix + selection.baseOffset,
+      );
+    }
+    final CodeLine line = codeLines[selection.baseIndex];
+    return _ImeValue(TextEditingValue(
+      text: (prefix > 0 ? _kPrefix : '') + line.text,
+      selection: textSelection,
+      composing: composing.isValid ? TextRange(
+        start: prefix + composing.start,
+        end: prefix + composing.end,
+      ) : composing,
+    ), _ImeWindow(
+      start: selection.baseIndex,
+      lineStarts: [prefix],
+      lineLengths: [line.length],
+      lineCount: codeLines.length,
+      single: true,
+    ));
+  }
+
 }
 
 class _ImeValue {
@@ -769,8 +843,9 @@ class _LineDeltas {
   const _LineDeltas(this.deltas, this.value);
 }
 
-const int _kImeWindowLines = 100;
-const int _kImeWindowChars = 16384;
+const int _kImeWindowLines = 50;
+const int _kImeWindowChars = 8192;
+const int _kImeWindowMargin = 10;
 
 /// Which lines the text an input method holds is made of, and where each of
 /// them starts in it.
@@ -780,19 +855,23 @@ class _ImeWindow {
   /// Where each line starts in the text, after the prefix.
   final List<int> lineStarts;
   final List<int> lineLengths;
-  /// Whether these are all the lines there are.
-  final bool whole;
+  /// How many lines the code had.
+  final int lineCount;
+  /// Whether this is the selection's first line alone, see
+  /// [_CodeInputController._buildLineValue].
+  final bool single;
 
   const _ImeWindow({
     required this.start,
     required this.lineStarts,
     required this.lineLengths,
-    required this.whole,
+    required this.lineCount,
+    this.single = false,
   });
 
-  /// The lines of [text], which holds those from [start] on behind a prefix
-  /// [prefix] long.
-  factory _ImeWindow.fromText(int start, String text, int prefix, bool whole) {
+  /// The lines of [text], an edited copy of what [window] held, behind a
+  /// prefix [prefix] long.
+  factory _ImeWindow.fromText(_ImeWindow window, String text, int prefix) {
     final List<int> lineStarts = [prefix];
     final List<int> lineLengths = [];
     for (int i = prefix; i < text.length; i++) {
@@ -802,8 +881,16 @@ class _ImeWindow {
       }
     }
     lineLengths.add(text.length - lineStarts.last);
-    return _ImeWindow(start: start, lineStarts: lineStarts, lineLengths: lineLengths, whole: whole);
+    return _ImeWindow(
+      start: window.start,
+      lineStarts: lineStarts,
+      lineLengths: lineLengths,
+      lineCount: window.lineCount + lineStarts.length - window.lineStarts.length,
+    );
   }
+
+  /// Whether these are all the lines there are.
+  bool get whole => start == 0 && end == lineCount - 1;
 
   int get end => start + lineStarts.length - 1;
 
@@ -1042,11 +1129,15 @@ class _ClosureSymbol {
 
 const String _kPrefix = '\u200b';
 
+/// Whether the text an input method holds starts with [_kPrefix], so that a
+/// backspace at its start still reaches the editor.
+bool get _usePrefix => kIsIOS || kIsAndroid;
+
 extension _TextEditingValueExtension on TextEditingValue {
 
   bool get startWithPrefix => text.startsWith(_kPrefix);
 
-  bool get usePrefix => kIsIOS || kIsAndroid;
+  bool get usePrefix => _usePrefix;
 
   TextEditingValue removePrefixIfNecessary() {
     if (!usePrefix) {

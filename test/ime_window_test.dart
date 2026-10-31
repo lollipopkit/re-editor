@@ -178,5 +178,43 @@ void main() {
 
     expect(controller.text, 'one\ntwo');
     expect(controller.selection, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    // It already dropped the prefix, so it is sent again.
+    expect(editingState(tester)['text'], '${prefix}one\ntwo');
+  });
+
+  testIme('typing over its select all replaces every line', (tester) async {
+    await pumpEditor(tester, 'one\ntwo\nthree', const CodeLineSelection.collapsed(index: 1, offset: 1));
+    final String text = editingState(tester)['text'] as String;
+    await sendDelta(tester, selectionBase: 0, selectionExtent: text.length);
+
+    // The prefix goes with the selection it is part of.
+    await sendDelta(tester, deltaText: 'a', deltaStart: 0, deltaEnd: text.length, selectionBase: 1);
+
+    expect(controller.text, 'a');
+    expect(controller.selection, const CodeLineSelection.collapsed(index: 0, offset: 1));
+  });
+
+  testIme('a selection too long to send is edited as a whole', (tester) async {
+    final String text = List.generate(2000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+    // Only the first line goes.
+    expect(editingState(tester)['text'], '${prefix}line 0');
+
+    await sendDelta(tester, deltaText: 'x', deltaStart: 1, deltaEnd: 7, selectionBase: 2);
+
+    expect(controller.text, 'x');
+  });
+
+  testIme('moving the cursor inside what it holds sends nothing back', (tester) async {
+    await pumpEditor(tester, 'one\ntwo\nthree', const CodeLineSelection.collapsed(index: 1, offset: 1));
+    int sent() => tester.testTextInput.log.where((call) => call.method == 'TextInput.setEditingState').length;
+    final int before = sent();
+
+    await sendDelta(tester, selectionBase: 11);
+
+    expect(controller.selection, const CodeLineSelection.collapsed(index: 2, offset: 2));
+    expect(sent(), before);
   });
 }
