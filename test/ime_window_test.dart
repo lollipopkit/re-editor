@@ -107,7 +107,7 @@ void main() {
     await sendDelta(tester, selectionBase: 0, selectionExtent: held.length);
 
     expect(controller.selection.start, const CodeLinePosition(index: 0, offset: 0));
-    expect(controller.selection.end, CodeLinePosition(index: 499, offset: 'line 499'.length));
+    expect(controller.selection.end, const CodeLinePosition(index: 499, offset: 'line 499'.length));
   });
 
   testIme('its cursor keys reach another line', (tester) async {
@@ -194,8 +194,80 @@ void main() {
     expect(controller.selection, const CodeLineSelection.collapsed(index: 0, offset: 1));
   });
 
-  testIme('a selection too long to send is edited as a whole', (tester) async {
+  testIme('its select all hands it every line to copy', (tester) async {
+    // More than the lines around a cursor, less than a selection can hold.
     final String text = List.generate(2000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+
+    expect(editingState(tester)['text'], '$prefix$text');
+  });
+
+  testIme('putting the same text over it after a copy keeps every line', (tester) async {
+    final String text = List.generate(2000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+
+    await sendDelta(tester, deltaText: text, deltaStart: 1, deltaEnd: 1 + text.length,
+      selectionBase: 1 + text.length);
+
+    expect(controller.text, text);
+    expect(controller.selection, const CodeLineSelection.collapsed(index: 1999, offset: 'line 1999'.length));
+  });
+
+  testIme('and so does it past what a selection can hold', (tester) async {
+    final String text = List.generate(10000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+    expect(editingState(tester)['text'], '${prefix}line 0');
+
+    await sendDelta(tester, deltaText: 'line 0', deltaStart: 1, deltaEnd: 7, selectionBase: 7);
+
+    expect(controller.text, text);
+    expect(controller.selection, const CodeLineSelection.collapsed(index: 9999, offset: 'line 9999'.length));
+  });
+
+  testIme('and its collapsing to the start goes to the start', (tester) async {
+    final String text = List.generate(10000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+
+    await sendDelta(tester, selectionBase: 1);
+
+    expect(controller.text, text);
+    expect(controller.selection, const CodeLineSelection.collapsed(index: 0, offset: 0));
+  });
+
+  testIme('and moving one end of it keeps the other', (tester) async {
+    final String text = List.generate(10000, (i) => 'line $i').join('\n');
+    await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
+    controller.selectAll();
+    await tester.pump();
+
+    // Its start two along, its end where it was.
+    await sendDelta(tester, selectionBase: 3, selectionExtent: 7);
+
+    expect(controller.selection, const CodeLineSelection(
+      baseIndex: 0, baseOffset: 2, extentIndex: 9999, extentOffset: 'line 9999'.length,
+    ));
+  });
+
+  testIme('a long line holds the selection made in it', (tester) async {
+    final String line = 'x' * 70000;
+    await pumpEditor(tester, line, const CodeLineSelection(
+      baseIndex: 0, baseOffset: 10, extentIndex: 0, extentOffset: 69000,
+    ));
+
+    expect(editingState(tester)['selectionBase'], 11);
+    expect(editingState(tester)['selectionExtent'], 69001);
+  });
+
+  testIme('a selection too long to send is edited as a whole', (tester) async {
+    final String text = List.generate(10000, (i) => 'line $i').join('\n');
     await pumpEditor(tester, text, const CodeLineSelection.collapsed(index: 0, offset: 0));
     controller.selectAll();
     await tester.pump();
