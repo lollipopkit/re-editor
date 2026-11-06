@@ -168,7 +168,15 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     final TextEditingValue remoteValue = _remoteEditingValue!;
     final _ImeWindow window = _remoteWindow!;
     if (window.single) {
-      _applyLineDeltas(textEditingDeltas, textEditingDeltas, remoteValue);
+      TextEditingValue newValue = remoteValue;
+      for (final TextEditingDelta delta in textEditingDeltas) {
+        newValue = delta.apply(newValue);
+      }
+      if (newValue.text == remoteValue.text) {
+        _applySingleSelection(newValue, remoteValue, window);
+      } else {
+        _applyLineDeltas(textEditingDeltas, textEditingDeltas, remoteValue);
+      }
       return;
     }
     final _LineDeltas? lineDeltas = _localizeDeltas(textEditingDeltas, remoteValue, window);
@@ -220,6 +228,41 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     }
     notifyListeners();
     // _Trace.end('updateEditingValue all');
+  }
+
+  /// A selection change from an input method that holds one line of a longer
+  /// selection. The ends of what it holds stand for the ends of the
+  /// selection, so collapsing it after a copy, which some do by committing
+  /// the same text again, keeps every line.
+  void _applySingleSelection(TextEditingValue newValue, TextEditingValue remoteValue, _ImeWindow window) {
+    _remoteEditingValue = newValue;
+    final TextSelection held = remoteValue.selection;
+    final TextSelection moved = newValue.selection;
+    if (moved == held || !moved.isValid) {
+      return;
+    }
+    CodeLinePosition positionOf(int offset) {
+      if (offset == held.start) {
+        return selection.start;
+      }
+      if (offset == held.end) {
+        return selection.end;
+      }
+      return window.positionOf(offset, moved.affinity);
+    }
+    final CodeLinePosition base = positionOf(moved.baseOffset);
+    final CodeLinePosition extent = positionOf(moved.extentOffset);
+    _applyRemote(() {
+      _controller.selection = CodeLineSelection(
+        baseIndex: base.index,
+        baseOffset: base.offset,
+        baseAffinity: base.affinity,
+        extentIndex: extent.index,
+        extentOffset: extent.offset,
+        extentAffinity: extent.affinity,
+      );
+    });
+    notifyListeners();
   }
 
   /// Edits and selections that reach past the selected line: a selection
@@ -719,10 +762,10 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     int first = selection.startIndex;
     int last = selection.endIndex;
     int selected = 0;
-    for (int i = first; i <= last && selected <= _kImeWindowChars; i++) {
+    for (int i = first; i <= last && selected <= _kImeSelectionChars; i++) {
       selected += lines[i].length + 1;
     }
-    if (selected > _kImeWindowChars) {
+    if (selected > _kImeSelectionChars) {
       return _buildLineValue(prefix);
     }
     final _ImeWindow? previous = _remoteWindow;
@@ -793,12 +836,17 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     ), window);
   }
 
-  /// The selection's first line alone, for a selection too long to send: the
-  /// input method holds its part of that line, and an edit to it applies to
-  /// the whole selection.
+  /// The selection's base line alone, for a selection too long to send: the
+  /// input method holds the selected part of that line, and an edit to it
+  /// applies to the whole selection.
   _ImeValue _buildLineValue(int prefix) {
     final TextSelection textSelection;
-    if (selection.baseIndex < selection.extentIndex) {
+    if (selection.isSameLine) {
+      textSelection = TextSelection(
+        baseOffset: prefix + selection.baseOffset,
+        extentOffset: prefix + selection.extentOffset,
+      );
+    } else if (selection.baseIndex < selection.extentIndex) {
       textSelection = TextSelection(
         baseOffset: prefix + selection.baseOffset,
         extentOffset: prefix + codeLines[selection.baseIndex].length,
@@ -845,6 +893,9 @@ class _LineDeltas {
 
 const int _kImeWindowLines = 50;
 const int _kImeWindowChars = 8192;
+// Sent whole, so the input method copies all of it; past this it is too much
+// to send to it on each change.
+const int _kImeSelectionChars = 65536;
 const int _kImeWindowMargin = 10;
 
 /// Which lines the text an input method holds is made of, and where each of
@@ -857,7 +908,7 @@ class _ImeWindow {
   final List<int> lineLengths;
   /// How many lines the code had.
   final int lineCount;
-  /// Whether this is the selection's first line alone, see
+  /// Whether this is the selection's base line alone, see
   /// [_CodeInputController._buildLineValue].
   final bool single;
 
